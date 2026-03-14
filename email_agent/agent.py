@@ -17,9 +17,10 @@ logger = logging.getLogger(__name__)
 POLL_INTERVAL_SEC = 60
 
 
-def run_once() -> int:
+def run_once(*, print_response: bool = False) -> int:
     """
     Process one batch of unread emails. Returns count of emails replied to.
+    If print_response is True, prints the LLM reply to stdout before sending.
     """
     errors = Config.validate()
     if errors:
@@ -53,6 +54,11 @@ def run_once() -> int:
         except Exception as e:
             logger.exception("LLM failed for %s: %s", reply_to_addr, e)
             continue
+
+        if print_response:
+            print("\n--- Claude response ---")
+            print(reply_body)
+            print("---\n")
 
         try:
             send_reply(

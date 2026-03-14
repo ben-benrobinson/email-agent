@@ -22,7 +22,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.once:
-        run_once()
+        run_once(print_response=True)
     else:
         run(poll_interval=args.poll_interval)
 
