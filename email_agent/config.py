@@ -57,7 +57,7 @@ class Config:
 
     # LLM (Claude / Anthropic)
     anthropic_api_key: str = get_env("ANTHROPIC_API_KEY", "")
-    anthropic_model: str = get_env("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022")
+    anthropic_model: str = get_env("ANTHROPIC_MODEL", "claude-haiku-4-5")
 
     # Allowlist
     allowlist: set[str] = load_allowlist()

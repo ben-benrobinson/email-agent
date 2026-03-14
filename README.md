@@ -107,7 +107,7 @@ You may need to adjust the code for SSL vs STARTTLS depending on your provider.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ANTHROPIC_MODEL` | `claude-3-5-haiku-20241022` | Model for reply generation |
+| `ANTHROPIC_MODEL` | `claude-haiku-4-5` | Model for reply generation |
 
 ## License
 
