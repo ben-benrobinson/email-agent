@@ -1,0 +1,84 @@
+"""Configuration loaded from environment variables."""
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env from project root (parent of this package)
+_root = Path(__file__).resolve().parent.parent
+load_dotenv(_root / ".env")
+
+
+def get_env(key: str, default: str = "") -> str:
+    """Get environment variable, stripping whitespace."""
+    return os.environ.get(key, default).strip()
+
+
+def load_allowlist() -> set[str]:
+    """
+    Load allowlist from allowlist.txt or ALLOWLIST env var.
+    allowlist.txt takes precedence if it exists.
+    """
+    # Try file first
+    allowlist_path = _root / "allowlist.txt"
+    if allowlist_path.exists():
+        addresses = set()
+        with open(allowlist_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    # Normalize to lowercase for case-insensitive matching
+                    addresses.add(line.lower())
+        return addresses
+
+    # Fall back to env var (comma-separated)
+    env_val = get_env("ALLOWLIST")
+    if env_val:
+        return {addr.strip().lower() for addr in env_val.split(",") if addr.strip()}
+
+    return set()
+
+
+class Config:
+    """Application configuration."""
+
+    # IMAP (receiving)
+    imap_host: str = get_env("IMAP_HOST", "127.0.0.1")
+    imap_port: int = int(get_env("IMAP_PORT", "1143"))
+    imap_user: str = get_env("IMAP_USER", "")
+    imap_password: str = get_env("IMAP_PASSWORD", "")
+
+    # SMTP (sending)
+    smtp_host: str = get_env("SMTP_HOST", "127.0.0.1")
+    smtp_port: int = int(get_env("SMTP_PORT", "1025"))
+    smtp_user: str = get_env("SMTP_USER", "")
+    smtp_password: str = get_env("SMTP_PASSWORD", "")
+
+    # LLM (Claude / Anthropic)
+    anthropic_api_key: str = get_env("ANTHROPIC_API_KEY", "")
+    anthropic_model: str = get_env("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022")
+
+    # Allowlist
+    allowlist: set[str] = load_allowlist()
+
+    # SSL: set IMAP_SSL_SKIP_VERIFY=1 for Proton Bridge (self-signed local cert)
+    imap_ssl_skip_verify: bool = get_env("IMAP_SSL_SKIP_VERIFY", "").lower() in ("1", "true", "yes")
+    smtp_ssl_skip_verify: bool = get_env("SMTP_SSL_SKIP_VERIFY", "").lower() in ("1", "true", "yes")
+
+    @classmethod
+    def validate(cls) -> list[str]:
+        """Validate config and return list of error messages."""
+        errors = []
+        if not cls.imap_user or not cls.imap_password:
+            errors.append("IMAP_USER and IMAP_PASSWORD must be set")
+        if not cls.smtp_user or not cls.smtp_password:
+            errors.append("SMTP_USER and SMTP_PASSWORD must be set")
+        if not cls.anthropic_api_key:
+            errors.append("ANTHROPIC_API_KEY must be set")
+        if not cls.allowlist:
+            errors.append(
+                "Allowlist is empty. Create allowlist.txt (copy from allowlist.example.txt) "
+                "or set ALLOWLIST env var with comma-separated emails"
+            )
+        return errors
