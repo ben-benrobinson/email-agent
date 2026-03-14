@@ -7,6 +7,9 @@
 # Allowlist (contains your personal email addresses)
 allowlist.txt
 
+# Knowledge base (personal facts for response context)
+knowledge.txt
+
 # Python
 __pycache__/
 *.py[cod]

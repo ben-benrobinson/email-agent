@@ -5,6 +5,7 @@ An LLM-powered email agent that automatically responds to emails from an allowli
 ## Features
 
 - **Allowlist**: Only responds to emails from addresses you've approved
+- **Knowledge base**: Personal facts (job, preferences, etc.) are factored into replies
 - **LLM replies**: Uses Claude (Anthropic) to generate natural responses
 - **Secure**: All credentials via environment variables—no secrets in the repo
 - **Portable**: Clone, configure, and run for your own email
@@ -69,7 +70,27 @@ Or use the `ALLOWLIST` env var (comma-separated):
 ALLOWLIST=friend@example.com,colleague@company.org
 ```
 
-### 4. Run the agent
+### 4. Set up the knowledge base (optional)
+
+Add facts about yourself so the agent can personalize replies:
+
+```bash
+cp knowledge.example.txt knowledge.txt
+# Edit knowledge.txt - one fact per line
+```
+
+Example `knowledge.txt`:
+
+```
+I work at Google
+My wife is allergic to nuts
+I love steak
+I'm a data scientist
+```
+
+The agent will use these when relevant (e.g., declining restaurant suggestions with nuts, mentioning your job in work emails).
+
+### 5. Run the agent
 
 ```bash
 python run.py
@@ -108,6 +129,7 @@ You may need to adjust the code for SSL vs STARTTLS depending on your provider.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ANTHROPIC_MODEL` | `claude-haiku-4-5` | Model for reply generation |
+| `KNOWLEDGE` | (none) | Alternative to knowledge.txt: newline-separated facts as env var |
 
 ## License
 

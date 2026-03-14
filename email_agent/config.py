@@ -15,6 +15,25 @@ def get_env(key: str, default: str = "") -> str:
     return os.environ.get(key, default).strip()
 
 
+def load_knowledge() -> str:
+    """
+    Load knowledge from knowledge.txt or KNOWLEDGE env var.
+    Returns a string of facts to inject into the LLM context.
+    """
+    knowledge_path = _root / "knowledge.txt"
+    if knowledge_path.exists():
+        lines = []
+        with open(knowledge_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    lines.append(line)
+        return "\n".join(lines) if lines else ""
+
+    env_val = get_env("KNOWLEDGE")
+    return env_val if env_val else ""
+
+
 def load_allowlist() -> set[str]:
     """
     Load allowlist from allowlist.txt or ALLOWLIST env var.
@@ -61,6 +80,9 @@ class Config:
 
     # Allowlist
     allowlist: set[str] = load_allowlist()
+
+    # Knowledge base (personal facts for response context)
+    knowledge: str = load_knowledge()
 
     # SSL: set IMAP_SSL_SKIP_VERIFY=1 for Proton Bridge (self-signed local cert)
     imap_ssl_skip_verify: bool = get_env("IMAP_SSL_SKIP_VERIFY", "").lower() in ("1", "true", "yes")

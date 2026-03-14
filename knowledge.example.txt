@@ -1,0 +1,9 @@
+# Personal knowledge - facts about you that the agent uses when writing replies.
+# Copy this file to knowledge.txt and add your own facts.
+# One fact per line. Lines starting with # are ignored. Use these to personalize responses.
+#
+# Examples:
+# I work at Google
+# My wife is allergic to nuts
+# I love steak
+# I'm a data scientist

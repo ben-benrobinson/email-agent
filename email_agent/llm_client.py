@@ -16,10 +16,20 @@ def generate_reply(
     """
     client = Anthropic(api_key=Config.anthropic_api_key)
 
-    system_prompt = """You are a helpful email assistant. You write concise, professional, 
+    base_instructions = """You are a helpful email assistant. You write concise, professional, 
 and friendly email replies. Match the tone of the incoming email when appropriate. 
 Keep replies focused and avoid unnecessary length. Do not include email headers 
 (From, To, Subject) - output only the body of the reply."""
+
+    knowledge_block = ""
+    if Config.knowledge:
+        knowledge_block = f"""
+
+Use the following facts about the user when relevant to personalize responses:
+{Config.knowledge}
+"""
+
+    system_prompt = base_instructions + knowledge_block
 
     user_content = f"""Reply to this email:
 
