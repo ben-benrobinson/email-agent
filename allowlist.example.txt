@@ -1,7 +1,9 @@
 # Email allowlist - addresses from which this agent will respond.
 # Copy this file to allowlist.txt and add your allowed sender addresses.
-# One email address per line. Lines starting with # are ignored.
+# One email per line. Optionally add a tone instruction with " | " (space-pipe-space).
+# Lines starting with # are ignored.
 #
 # Example:
 # friend@example.com
 # colleague@company.com
+# buddy@example.com | be witty and sarcastic

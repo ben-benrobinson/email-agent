@@ -3,7 +3,7 @@
 import logging
 import time
 
-from .allowlist import is_on_allowlist, normalize_email
+from .allowlist import get_instruction, is_on_allowlist, normalize_email
 from .config import Config
 from .email_client import fetch_unread_emails, mark_as_read, send_reply
 from .llm_client import generate_reply
@@ -44,12 +44,14 @@ def run_once(*, print_response: bool = False) -> int:
 
         subject = em["subject"]
         body = em["body_text"]
+        tone_instruction = get_instruction(from_header, Config.allowlist)
 
         try:
             reply_body = generate_reply(
                 from_addr=from_header,
                 subject=subject,
                 original_body=body,
+                tone_instruction=tone_instruction,
             )
         except Exception as e:
             logger.exception("LLM failed for %s: %s", reply_to_addr, e)

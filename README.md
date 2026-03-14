@@ -62,9 +62,12 @@ Example `allowlist.txt`:
 ```
 friend@example.com
 colleague@company.org
+buddy@example.com | be witty and sarcastic
 ```
 
-Or use the `ALLOWLIST` env var (comma-separated):
+Add ` | instruction` after an email to set tone for that sender (e.g. "be witty", "be sarcastic", "keep it formal").
+
+Or use the `ALLOWLIST` env var (comma-separated, no per-email instructions):
 
 ```
 ALLOWLIST=friend@example.com,colleague@company.org

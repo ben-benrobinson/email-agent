@@ -10,6 +10,7 @@ def generate_reply(
     subject: str,
     original_body: str,
     sender_name: str = "",
+    tone_instruction: str = "",
 ) -> str:
     """
     Generate a reply to an email using Claude (Anthropic).
@@ -29,7 +30,14 @@ Use the following facts about the user when relevant to personalize responses:
 {Config.knowledge}
 """
 
-    system_prompt = base_instructions + knowledge_block
+    tone_block = ""
+    if tone_instruction:
+        tone_block = f"""
+
+Tone/style for this reply: {tone_instruction}
+"""
+
+    system_prompt = base_instructions + knowledge_block + tone_block
 
     user_content = f"""Reply to this email:
 

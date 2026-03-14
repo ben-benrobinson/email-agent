@@ -34,29 +34,39 @@ def load_knowledge() -> str:
     return env_val if env_val else ""
 
 
-def load_allowlist() -> set[str]:
+def load_allowlist() -> dict[str, str]:
     """
     Load allowlist from allowlist.txt or ALLOWLIST env var.
-    allowlist.txt takes precedence if it exists.
+    Returns dict: email (lowercase) -> optional instruction (e.g. "be witty").
+    Format: "email@example.com" or "email@example.com | be witty and sarcastic"
     """
-    # Try file first
+    result: dict[str, str] = {}
+
     allowlist_path = _root / "allowlist.txt"
     if allowlist_path.exists():
-        addresses = set()
         with open(allowlist_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#"):
-                    # Normalize to lowercase for case-insensitive matching
-                    addresses.add(line.lower())
-        return addresses
+                    if " | " in line:
+                        email_part, instruction = line.split(" | ", 1)
+                        email = email_part.strip().lower()
+                        instruction = instruction.strip()
+                    else:
+                        email = line.lower()
+                        instruction = ""
+                    if email:
+                        result[email] = instruction
+        return result
 
-    # Fall back to env var (comma-separated)
+    # Fall back to env var (comma-separated, no per-email instructions)
     env_val = get_env("ALLOWLIST")
     if env_val:
-        return {addr.strip().lower() for addr in env_val.split(",") if addr.strip()}
-
-    return set()
+        for addr in env_val.split(","):
+            addr = addr.strip().lower()
+            if addr:
+                result[addr] = ""
+    return result
 
 
 class Config:
@@ -78,8 +88,8 @@ class Config:
     anthropic_api_key: str = get_env("ANTHROPIC_API_KEY", "")
     anthropic_model: str = get_env("ANTHROPIC_MODEL", "claude-haiku-4-5")
 
-    # Allowlist
-    allowlist: set[str] = load_allowlist()
+    # Allowlist: email -> optional tone instruction (e.g. "be witty")
+    allowlist: dict[str, str] = load_allowlist()
 
     # Knowledge base (personal facts for response context)
     knowledge: str = load_knowledge()
