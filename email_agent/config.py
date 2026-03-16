@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 # Load .env from project root (parent of this package)
 _root = Path(__file__).resolve().parent.parent
+project_root = _root  # Public alias for CLI and other callers
 load_dotenv(_root / ".env")
 
 
@@ -69,6 +70,29 @@ def load_allowlist() -> dict[str, str]:
     return result
 
 
+def load_signoff() -> str:
+    """
+    Load email signoff from signoff.txt or EMAIL_SIGNOFF env var.
+    Used as the closing of every sent email (e.g. "Best,\nBen").
+    """
+    env_val = get_env("EMAIL_SIGNOFF")
+    if env_val:
+        return env_val.replace("\\n", "\n").strip()
+    signoff_path = _root / "signoff.txt"
+    if signoff_path.exists():
+        with open(signoff_path, encoding="utf-8") as f:
+            return f.read().strip()
+    return ""
+
+
+def get_feedback_path() -> Path:
+    """Path to the JSON file where user feedback is stored."""
+    path_str = get_env("FEEDBACK_FILE")
+    if path_str:
+        return Path(path_str).expanduser().resolve()
+    return _root / "feedback.json"
+
+
 class Config:
     """Application configuration."""
 
@@ -93,6 +117,9 @@ class Config:
 
     # Knowledge base (personal facts for response context)
     knowledge: str = load_knowledge()
+
+    # Email signoff appended to every sent email (e.g. "Best,\nBen")
+    signoff: str = load_signoff()
 
     # SSL: set IMAP_SSL_SKIP_VERIFY=1 for Proton Bridge (self-signed local cert)
     imap_ssl_skip_verify: bool = get_env("IMAP_SSL_SKIP_VERIFY", "").lower() in ("1", "true", "yes")

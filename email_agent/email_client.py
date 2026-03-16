@@ -138,6 +138,10 @@ def send_reply(
     if references:
         msg["References"] = references
 
+    # Append user-configured signoff to every sent email
+    if Config.signoff:
+        body_plain = body_plain.rstrip() + "\n\n" + Config.signoff
+
     msg.attach(MIMEText(body_plain, "plain", "utf-8"))
 
     ctx = _ssl_context()

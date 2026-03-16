@@ -93,7 +93,22 @@ I'm a data scientist
 
 The agent will use these when relevant (e.g., declining restaurant suggestions with nuts, mentioning your job in work emails).
 
-### 5. Run the agent
+### 5. Set your email signoff (optional)
+
+Every email you send can end with a fixed signoff (e.g. "Best,\nBen"):
+
+```bash
+# Option A: use the CLI (use \n for newline)
+python run.py signoff "Best,\nBen"
+
+# Option B: copy the example file and edit
+cp signoff.example.txt signoff.txt
+# Edit signoff.txt with your preferred closing
+```
+
+You can also set `EMAIL_SIGNOFF=Best,\nBen` in `.env` if you prefer.
+
+### 6. Run the agent
 
 ```bash
 python run.py
@@ -127,12 +142,24 @@ Use your provider's IMAP/SMTP settings in `.env`. Examples:
 
 You may need to adjust the code for SSL vs STARTTLS depending on your provider.
 
+## Giving the agent feedback
+
+You can store feedback so the agent improves future suggestions (e.g. what you liked or didn’t like):
+
+```bash
+python run.py feedback "beef stew and chicken tacos were good meal suggestions; fajitas weren't"
+```
+
+Feedback is saved in `feedback.json` (or the path in `FEEDBACK_FILE`) and included in the LLM context for every reply. Add more feedback anytime; it accumulates.
+
 ## Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ANTHROPIC_MODEL` | `claude-haiku-4-5` | Model for reply generation |
 | `KNOWLEDGE` | (none) | Alternative to knowledge.txt: newline-separated facts as env var |
+| `EMAIL_SIGNOFF` | (none) | Signoff appended to every email; `\n` for newline. Overrides signoff.txt if set. |
+| `FEEDBACK_FILE` | `feedback.json` | Path to the JSON file where feedback is stored |
 
 ## License
 

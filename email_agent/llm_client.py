@@ -3,6 +3,7 @@
 from anthropic import Anthropic
 
 from .config import Config
+from .feedback_store import get_all_feedback
 
 
 def generate_reply(
@@ -37,7 +38,16 @@ Use the following facts about the user when relevant to personalize responses:
 Tone/style for this reply: {tone_instruction}
 """
 
-    system_prompt = base_instructions + knowledge_block + tone_block
+    feedback_block = ""
+    feedback_text = get_all_feedback()
+    if feedback_text:
+        feedback_block = f"""
+
+The user has given the following feedback. Use it to improve your suggestions and style in this and future replies (e.g. what they liked or disliked):
+{feedback_text}
+"""
+
+    system_prompt = base_instructions + knowledge_block + tone_block + feedback_block
 
     user_content = f"""Reply to this email:
 

@@ -10,6 +10,10 @@ allowlist.txt
 # Knowledge base (personal facts for response context)
 knowledge.txt
 
+# User customization (signoff and feedback are personal)
+signoff.txt
+feedback.json
+
 # Python
 __pycache__/
 *.py[cod]
