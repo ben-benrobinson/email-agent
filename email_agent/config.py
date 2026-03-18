@@ -1,6 +1,7 @@
 """Configuration loaded from environment variables."""
 
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -93,6 +94,94 @@ def get_feedback_path() -> Path:
     return _root / "feedback.json"
 
 
+def load_calendar_allowlist() -> set[str]:
+    """
+    Load calendar allowlist from calendar_allowlist.txt or CALENDAR_ALLOWLIST env var.
+    Returns set of lowercase emails.
+    """
+    allowlist_path = _root / "calendar_allowlist.txt"
+    if allowlist_path.exists():
+        out: set[str] = set()
+        with open(allowlist_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    out.add(line.lower())
+        return out
+
+    env_val = get_env("CALENDAR_ALLOWLIST")
+    if env_val:
+        return {a.strip().lower() for a in env_val.split(",") if a.strip()}
+    return set()
+
+
+def load_calendar_schedule() -> list[dict]:
+    """
+    Load calendar digest schedule rules from calendar_schedule.txt or CALENDAR_SCHEDULE env var.
+
+    Each rule line format:
+      - "18:00 daily"
+      - "10:00 sat"
+      - "09:30 mon,wed,fri"
+
+    Returns list of dicts: {"time_hhmm": "18:00", "dows": set[int], "rule_id": str}
+    where dows are Python weekday ints (Mon=0..Sun=6).
+    """
+    dow_map = {
+        "mon": 0,
+        "tue": 1,
+        "wed": 2,
+        "thu": 3,
+        "fri": 4,
+        "sat": 5,
+        "sun": 6,
+    }
+
+    def parse_line(line: str) -> dict | None:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            return None
+        m = re.match(r"^(?P<time>\\d{1,2}:\\d{2})\\s+(?P<days>.+)$", line, flags=re.IGNORECASE)
+        if not m:
+            return None
+        time_hhmm = m.group("time")
+        days = m.group("days").strip().lower()
+        if days == "daily":
+            dows = set(range(7))
+        else:
+            parts = [p.strip() for p in days.split(",") if p.strip()]
+            dows = {dow_map[p[:3]] for p in parts if p[:3] in dow_map}
+        if not dows:
+            return None
+        rule_id = f"{time_hhmm}|{','.join(str(d) for d in sorted(dows))}"
+        return {"time_hhmm": time_hhmm, "dows": dows, "rule_id": rule_id}
+
+    schedule_path = _root / "calendar_schedule.txt"
+    lines: list[str] = []
+    if schedule_path.exists():
+        with open(schedule_path, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    else:
+        env_val = get_env("CALENDAR_SCHEDULE")
+        if env_val:
+            lines = env_val.split(";")
+
+    rules: list[dict] = []
+    for line in lines:
+        rule = parse_line(line)
+        if rule:
+            rules.append(rule)
+    return rules
+
+
+def get_calendar_state_path() -> Path:
+    """Path to the JSON file that stores last-run timestamps for calendar digest schedules."""
+    path_str = get_env("CALENDAR_STATE_FILE")
+    if path_str:
+        return Path(path_str).expanduser().resolve()
+    return _root / "calendar_state.json"
+
+
 class Config:
     """Application configuration."""
 
@@ -120,6 +209,10 @@ class Config:
 
     # Email signoff appended to every sent email (e.g. "Best,\nBen")
     signoff: str = load_signoff()
+
+    # Calendar digest: senders to scan + schedule rules
+    calendar_allowlist: set[str] = load_calendar_allowlist()
+    calendar_schedule: list[dict] = load_calendar_schedule()
 
     # SSL: set IMAP_SSL_SKIP_VERIFY=1 for Proton Bridge (self-signed local cert)
     imap_ssl_skip_verify: bool = get_env("IMAP_SSL_SKIP_VERIFY", "").lower() in ("1", "true", "yes")

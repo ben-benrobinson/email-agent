@@ -1,0 +1,7 @@
+# Calendar allowlist - addresses to scan for scheduling proposals.
+# Copy this file to calendar_allowlist.txt and add senders you want to track.
+# One email per line. Lines starting with # are ignored.
+#
+# Example:
+# recruiter@company.com
+# friend@example.com

@@ -1,5 +1,7 @@
 """LLM client for generating email responses."""
 
+import json
+
 from anthropic import Anthropic
 
 from .config import Config
@@ -74,3 +76,65 @@ Write a natural reply:"""
     if response.content and response.content[0].type == "text":
         return response.content[0].text.strip()
     return ""
+
+
+def extract_calendar_proposals(*, emails: list[dict], now_iso: str) -> list[dict]:
+    """
+    Given a list of emails, extract proposed dates/times suitable for a calendar digest.
+
+    Input email dict keys (expected):
+      - from, subject, date, body
+
+    Returns a list of dicts:
+      - from: str
+      - subject: str
+      - description: str (brief event description)
+      - proposed_times: list[str] (date/time options as readable strings)
+    """
+    if not emails:
+        return []
+
+    client = Anthropic(api_key=Config.anthropic_api_key)
+
+    system = """You extract scheduling proposals from emails.
+You will be given a batch of emails (sender, subject, date, body). For each email:
+- If it suggests meeting times/dates (explicit or implicit), extract the proposed options.
+- If there are no proposed dates/times, omit that email from the output.
+
+Output MUST be valid JSON only (no surrounding prose), with this exact shape:
+{
+  "items": [
+    {
+      "from": "sender@example.com",
+      "subject": "...",
+      "description": "brief event description",
+      "proposed_times": ["...", "..."]
+    }
+  ]
+}
+
+Guidelines:
+- Prefer concrete times/dates. If relative like \"tomorrow afternoon\", keep it as-is (don't guess a calendar date).
+- Keep description short and useful (e.g. \"Coffee chat\" / \"Interview\" / \"Dinner\" / \"Call\").
+- proposed_times should be human-readable strings; do not invent details.
+"""
+
+    user = json.dumps({"now": now_iso, "emails": emails}, ensure_ascii=False)
+
+    resp = client.messages.create(
+        model=Config.anthropic_model,
+        max_tokens=900,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+    )
+
+    if not (resp.content and resp.content[0].type == "text"):
+        return []
+
+    text = resp.content[0].text.strip()
+    try:
+        data = json.loads(text)
+        items = data.get("items", [])
+        return items if isinstance(items, list) else []
+    except json.JSONDecodeError:
+        return []

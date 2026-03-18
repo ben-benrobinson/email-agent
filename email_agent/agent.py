@@ -2,9 +2,11 @@
 
 import logging
 import time
+from datetime import datetime
 
 from .allowlist import get_instruction, is_on_allowlist, normalize_email
 from .config import Config
+from .calendar_digest import run_calendar_digest_if_due
 from .email_client import fetch_unread_emails, mark_as_read, send_reply
 from .llm_client import generate_reply
 
@@ -96,6 +98,8 @@ def run(poll_interval: int = POLL_INTERVAL_SEC) -> None:
     while True:
         try:
             run_once()
+            # Calendar digest is optional; if configured, it can trigger on schedule.
+            run_calendar_digest_if_due(now=datetime.now())
         except Exception as e:
             logger.exception("Poll cycle error: %s", e)
         time.sleep(poll_interval)

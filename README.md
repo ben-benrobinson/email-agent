@@ -120,6 +120,39 @@ The agent polls your inbox every 60 seconds. Use `--once` to process one batch a
 python run.py --once
 ```
 
+## Calendar digest (optional)
+
+If you regularly receive emails proposing dates/times (e.g. “Tue at 3?”), you can configure a scheduled digest that scans your inbox for those senders and emails you a summary.
+
+### 1. Create the calendar allowlist
+
+```bash
+cp calendar_allowlist.example.txt calendar_allowlist.txt
+# Edit calendar_allowlist.txt with sender emails to monitor
+```
+
+### 2. Configure the digest schedule
+
+```bash
+cp calendar_schedule.example.txt calendar_schedule.txt
+# Edit calendar_schedule.txt
+```
+
+Schedule format (one rule per line):
+- `18:00 daily`
+- `10:00 sat`
+- `09:30 mon,wed,fri`
+
+The agent checks on each poll cycle and will send at the **exact scheduled minute**, so keep `--poll-interval` at 60 seconds if you want it to be reliable.
+
+### 3. Test it once
+
+```bash
+python run.py calendar-digest
+```
+
+Digests are emailed **from you to you** (`SMTP_USER` → `SMTP_USER`) and the last-run timestamps are stored locally in `calendar_state.json` so you don’t get duplicates.
+
 ## Proton Mail Bridge Setup
 
 1. Install [Proton Mail Bridge](https://proton.me/mail/bridge)

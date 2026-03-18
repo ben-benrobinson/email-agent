@@ -13,6 +13,9 @@ knowledge.txt
 # User customization (signoff and feedback are personal)
 signoff.txt
 feedback.json
+calendar_allowlist.txt
+calendar_schedule.txt
+calendar_state.json
 
 # Python
 __pycache__/

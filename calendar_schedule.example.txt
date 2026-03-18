@@ -1,0 +1,10 @@
+# Calendar digest schedule.
+# Copy this file to calendar_schedule.txt and edit.
+#
+# One rule per line:
+#   - "18:00 daily"
+#   - "10:00 sat"
+#   - "09:30 mon,wed,fri"
+#
+# Times are local to the machine running the agent.
+18:00 daily

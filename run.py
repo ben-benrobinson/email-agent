@@ -4,6 +4,7 @@
 import argparse
 
 from email_agent.agent import run, run_once
+from email_agent.calendar_digest import run_calendar_digest_if_due
 from email_agent.config import project_root
 from email_agent.feedback_store import add_feedback
 
@@ -31,6 +32,15 @@ def _cmd_signoff(signoff: str) -> None:
         print("Signoff cleared (signoff.txt is empty).")
 
 
+def _cmd_calendar_digest() -> None:
+    """Run the calendar digest once (useful for testing configuration)."""
+    ran = run_calendar_digest_if_due(now=None)
+    if ran:
+        print("Calendar digest sent.")
+    else:
+        print("Calendar digest not sent (not due, or not configured).")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Email agent - LLM auto-responder for allowlisted senders")
     parser.add_argument(
@@ -52,6 +62,8 @@ def main() -> None:
     signoff_parser = subparsers.add_parser("signoff", help="Set signoff for every email (e.g. Best,\\nBen)")
     signoff_parser.add_argument("text", nargs="?", default="", help="Signoff text; use \\n for newline")
 
+    subparsers.add_parser("calendar-digest", help="Run calendar digest once (if configured/due)")
+
     args = parser.parse_args()
 
     if args.command == "feedback":
@@ -59,6 +71,9 @@ def main() -> None:
         return
     if args.command == "signoff":
         _cmd_signoff(args.text)
+        return
+    if args.command == "calendar-digest":
+        _cmd_calendar_digest()
         return
 
     if args.once:

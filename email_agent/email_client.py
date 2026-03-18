@@ -4,9 +4,10 @@ import ssl
 import email
 import imaplib
 import smtplib
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import formataddr, make_msgid, parseaddr
+from email.utils import formataddr, make_msgid, parseaddr, parsedate_to_datetime
 
 from .config import Config
 
@@ -48,12 +49,45 @@ def fetch_unread_emails() -> list[dict]:
         return result
 
 
+def fetch_emails_since(*, since: datetime) -> list[dict]:
+    """
+    Fetch emails from INBOX since the given datetime (IMAP SINCE is date-granular).
+    Returns list of parsed message dicts.
+    """
+    since_date = since.strftime("%d-%b-%Y")
+    ctx = _ssl_context()
+    with imaplib.IMAP4(Config.imap_host, Config.imap_port) as imap:
+        imap.starttls(ssl_context=ctx) if ctx else imap.starttls()
+        imap.login(Config.imap_user, Config.imap_password)
+        imap.select("INBOX")
+
+        _, msg_nums = imap.search(None, "SINCE", since_date)
+        uids = msg_nums[0].split()
+        if not uids:
+            return []
+
+        result = []
+        for uid in uids:
+            _, data = imap.fetch(uid, "(RFC822)")
+            raw = data[0][1]
+            msg = email.message_from_bytes(raw)
+            info = _parse_message(msg, uid.decode() if isinstance(uid, bytes) else uid)
+            if info:
+                result.append(info)
+        return result
+
+
 def _parse_message(msg: email.message.Message, uid: str) -> dict | None:
     """Parse email message into a dict."""
     from_addr = msg.get("From", "")
     to_addr = msg.get("To", "")
     subject = msg.get("Subject", "(no subject)")
     msg_id = msg.get("Message-ID", "")
+    date_header = msg.get("Date", "")
+    try:
+        date_dt = parsedate_to_datetime(date_header) if date_header else None
+    except Exception:
+        date_dt = None
 
     body_plain = ""
     body_html = ""
@@ -82,6 +116,7 @@ def _parse_message(msg: email.message.Message, uid: str) -> dict | None:
         "from_addr": from_addr,
         "to_addr": to_addr,
         "subject": subject,
+        "date": date_dt,
         "body_plain": body_plain,
         "body_html": body_html,
         "body_text": text_for_llm,
@@ -139,6 +174,26 @@ def send_reply(
         msg["References"] = references
 
     # Append user-configured signoff to every sent email
+    if Config.signoff:
+        body_plain = body_plain.rstrip() + "\n\n" + Config.signoff
+
+    msg.attach(MIMEText(body_plain, "plain", "utf-8"))
+
+    ctx = _ssl_context()
+    with smtplib.SMTP(Config.smtp_host, Config.smtp_port) as smtp:
+        smtp.starttls(context=ctx) if ctx else smtp.starttls()
+        smtp.login(Config.smtp_user, Config.smtp_password)
+        smtp.sendmail(Config.smtp_user, [to_addr], msg.as_string())
+
+
+def send_email(*, to_addr: str, subject: str, body_plain: str) -> None:
+    """Send a new email (non-reply)."""
+    msg = MIMEMultipart("alternative")
+    msg["From"] = formataddr((Config.smtp_user, Config.smtp_user))
+    msg["To"] = to_addr
+    msg["Subject"] = subject.strip() or "(no subject)"
+    msg["Message-ID"] = make_msgid(domain=Config.smtp_user.split("@")[-1])
+
     if Config.signoff:
         body_plain = body_plain.rstrip() + "\n\n" + Config.signoff
 

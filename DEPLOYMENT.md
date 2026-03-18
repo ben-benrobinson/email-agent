@@ -211,12 +211,12 @@ pip install -r requirements.txt
 cat > .env << 'EOF'
 IMAP_HOST=127.0.0.1
 IMAP_PORT=1143
-IMAP_USER=ben@benrobinson.io
+IMAP_USER=you@example.com
 IMAP_PASSWORD=your-bridge-password
 
 SMTP_HOST=127.0.0.1
 SMTP_PORT=1025
-SMTP_USER=ben@benrobinson.io
+SMTP_USER=you@example.com
 SMTP_PASSWORD=your-bridge-password
 
 IMAP_SSL_SKIP_VERIFY=1
