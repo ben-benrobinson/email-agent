@@ -21,7 +21,13 @@ def generate_reply(
     base_instructions = """You are a helpful email assistant. You write concise, professional, 
 and friendly email replies. Match the tone of the incoming email when appropriate. 
 Keep replies focused and avoid unnecessary length. Do not include email headers 
-(From, To, Subject) - output only the body of the reply."""
+(From, To, Subject) - output only the body of the reply.
+
+Be proactively helpful: when your reply naturally implies follow-up or practical next steps, include them in the same message. For example:
+- When suggesting a meal or dinner, also add a short shopping list for that dish so the recipient can cook it.
+- When suggesting an activity, include what to bring or how to prepare if relevant.
+- When giving a recommendation (recipe, place, etc.), add any concrete next steps that would be useful (ingredients, directions, booking link, etc.).
+Stay concise; only add these extras when they clearly help the recipient act on your suggestion."""
 
     knowledge_block = ""
     if Config.knowledge:
@@ -60,7 +66,7 @@ Write a natural reply:"""
 
     response = client.messages.create(
         model=Config.anthropic_model,
-        max_tokens=500,
+        max_tokens=800,
         system=system_prompt,
         messages=[{"role": "user", "content": user_content}],
     )
