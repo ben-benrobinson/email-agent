@@ -141,7 +141,7 @@ def load_calendar_schedule() -> list[dict]:
         line = line.strip()
         if not line or line.startswith("#"):
             return None
-        m = re.match(r"^(?P<time>\\d{1,2}:\\d{2})\\s+(?P<days>.+)$", line, flags=re.IGNORECASE)
+        m = re.match(r"^(?P<time>\d{1,2}:\d{2})\s+(?P<days>.+)$", line, flags=re.IGNORECASE)
         if not m:
             return None
         time_hhmm = m.group("time")
