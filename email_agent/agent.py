@@ -78,6 +78,11 @@ def run_once(*, print_response: bool = False) -> int:
         except Exception as e:
             logger.exception("Failed to send reply to %s: %s", reply_to_addr, e)
 
+    try:
+        run_calendar_digest_if_due(now=datetime.now())
+    except Exception as e:
+        logger.exception("Calendar digest error: %s", e)
+
     return replied
 
 

@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta
 from pathlib import Path
 
 from .allowlist import normalize_email
 from .config import Config, get_calendar_state_path
 from .email_client import fetch_emails_since, send_email
 from .llm_client import extract_calendar_proposals
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -70,8 +73,10 @@ def _parse_hhmm(hhmm: str) -> tuple[int, int] | None:
 def is_digest_due(*, now: datetime, rule: CalendarDigestRule, last_sent_at: datetime | None) -> bool:
     """
     Returns True if the digest should run for the given rule at the given time.
-    - Uses local machine time (naive datetimes are treated as local).
-    - Only triggers once per day per rule (tracked via last_sent_at).
+
+    Uses local machine time for naive datetimes. Fires **once per calendar day**
+    after the scheduled time — not only at the exact minute (60s polling often
+    skips the exact minute, which used to prevent digests from ever running).
     """
     hhmm = _parse_hhmm(rule.time_hhmm)
     if not hhmm:
@@ -79,19 +84,32 @@ def is_digest_due(*, now: datetime, rule: CalendarDigestRule, last_sent_at: date
     if now.weekday() not in rule.dows:
         return False
     h, m = hhmm
-    if not (now.hour == h and now.minute == m):
+    schedule_today = datetime.combine(now.date(), time(hour=h, minute=m))
+    if now < schedule_today:
         return False
-    if not last_sent_at:
+    if last_sent_at is None:
         return True
-    return last_sent_at.date() != now.date()
+    # Already sent today after this rule's scheduled time?
+    if last_sent_at.date() == now.date() and last_sent_at >= schedule_today:
+        return False
+    return True
 
 
-def run_calendar_digest_if_due(*, now: datetime | None = None) -> bool:
+def run_calendar_digest_if_due(*, now: datetime | None = None, force: bool = False) -> bool:
     """
     If any schedule is due, generate and email a digest to self.
     Returns True if a digest was sent.
+
+    If force is True, run all configured rules immediately (for testing), and
+    still updates last_sent_at so a scheduled run the same day won't duplicate.
     """
     if not Config.calendar_allowlist or not Config.calendar_schedule:
+        if force or logger.isEnabledFor(logging.DEBUG):
+            logger.info(
+                "Calendar digest skipped: calendar_allowlist (%d) or calendar_schedule (%d rules) empty",
+                len(Config.calendar_allowlist),
+                len(Config.calendar_schedule),
+            )
         return False
 
     now = now or datetime.now()
@@ -109,7 +127,7 @@ def run_calendar_digest_if_due(*, now: datetime | None = None) -> bool:
             except Exception:
                 last_dt = None
 
-        if not is_digest_due(now=now, rule=rule, last_sent_at=last_dt):
+        if not force and not is_digest_due(now=now, rule=rule, last_sent_at=last_dt):
             continue
 
         # Pull emails since last digest (or a conservative fallback window)
@@ -121,8 +139,17 @@ def run_calendar_digest_if_due(*, now: datetime | None = None) -> bool:
         candidates: list[dict] = []
         for em in emails:
             frm = normalize_email(em.get("from_addr", ""))
-            if frm and frm in allow:
-                candidates.append(em)
+            if not frm or frm not in allow:
+                continue
+            candidates.append(em)
+
+        logger.info(
+            "Calendar digest: rule=%s candidates=%d (from %d fetched since %s)",
+            rule.rule_id,
+            len(candidates),
+            len(emails),
+            since.isoformat(),
+        )
 
         proposals = extract_calendar_proposals(
             emails=[
@@ -134,7 +161,7 @@ def run_calendar_digest_if_due(*, now: datetime | None = None) -> bool:
                 }
                 for e in candidates
             ],
-            now_iso=now.replace(tzinfo=timezone.utc).isoformat(),
+            now_iso=now.isoformat(),
         )
 
         digest_body = _format_digest(proposals=proposals, window_start=since, window_end=now)
@@ -145,6 +172,7 @@ def run_calendar_digest_if_due(*, now: datetime | None = None) -> bool:
                 subject="Calendar Digest: proposed times",
                 body_plain=digest_body,
             )
+            logger.info("Calendar digest emailed to %s", Config.smtp_user)
             sent_any = True
 
         state.setdefault("last_sent_at", {})[rule.rule_id] = now.isoformat()

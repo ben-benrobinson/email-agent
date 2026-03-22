@@ -143,15 +143,19 @@ Schedule format (one rule per line):
 - `10:00 sat`
 - `09:30 mon,wed,fri`
 
-The agent checks on each poll cycle and will send at the **exact scheduled minute**, so keep `--poll-interval` at 60 seconds if you want it to be reliable.
+On each poll cycle, if it’s the right weekday and the current time is **on or after** the scheduled time that day, the digest runs **once** (then not again until the next day). This avoids missing the digest when the poll interval doesn’t land on the exact minute.
 
-### 3. Test it once
+### 3. Test it
 
 ```bash
+# Respect schedule (only sends when due)
 python run.py calendar-digest
+
+# Send a digest now (ignores schedule — best for debugging)
+python run.py calendar-digest --force
 ```
 
-Digests are emailed **from you to you** (`SMTP_USER` → `SMTP_USER`) and the last-run timestamps are stored locally in `calendar_state.json` so you don’t get duplicates.
+Digests are emailed **from you to you** (`SMTP_USER` → `SMTP_USER`) and the last-run timestamps are stored locally in `calendar_state.json` so you don’t get duplicates. `python run.py --once` also checks the calendar digest when it’s due.
 
 ## Proton Mail Bridge Setup
 

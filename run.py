@@ -5,7 +5,7 @@ import argparse
 
 from email_agent.agent import run, run_once
 from email_agent.calendar_digest import run_calendar_digest_if_due
-from email_agent.config import project_root
+from email_agent.config import Config, project_root
 from email_agent.feedback_store import add_feedback
 
 
@@ -32,13 +32,24 @@ def _cmd_signoff(signoff: str) -> None:
         print("Signoff cleared (signoff.txt is empty).")
 
 
-def _cmd_calendar_digest() -> None:
+def _cmd_calendar_digest(*, force: bool) -> None:
     """Run the calendar digest once (useful for testing configuration)."""
-    ran = run_calendar_digest_if_due(now=None)
+    errors = Config.validate()
+    if errors:
+        for e in errors:
+            print(e)
+        raise SystemExit(1)
+    ran = run_calendar_digest_if_due(now=None, force=force)
     if ran:
         print("Calendar digest sent.")
     else:
-        print("Calendar digest not sent (not due, or not configured).")
+        if force:
+            print("Calendar digest not sent (not configured: calendar_allowlist / calendar_schedule).")
+        else:
+            print(
+                "Calendar digest not sent (not due yet, or not configured). "
+                "Try: python run.py calendar-digest --force"
+            )
 
 
 def main() -> None:
@@ -62,7 +73,12 @@ def main() -> None:
     signoff_parser = subparsers.add_parser("signoff", help="Set signoff for every email (e.g. Best,\\nBen)")
     signoff_parser.add_argument("text", nargs="?", default="", help="Signoff text; use \\n for newline")
 
-    subparsers.add_parser("calendar-digest", help="Run calendar digest once (if configured/due)")
+    cal_parser = subparsers.add_parser("calendar-digest", help="Run calendar digest once (if configured/due)")
+    cal_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Run now regardless of schedule (for testing)",
+    )
 
     args = parser.parse_args()
 
@@ -73,7 +89,7 @@ def main() -> None:
         _cmd_signoff(args.text)
         return
     if args.command == "calendar-digest":
-        _cmd_calendar_digest()
+        _cmd_calendar_digest(force=getattr(args, "force", False))
         return
 
     if args.once:

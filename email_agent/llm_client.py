@@ -131,10 +131,23 @@ Guidelines:
     if not (resp.content and resp.content[0].type == "text"):
         return []
 
-    text = resp.content[0].text.strip()
+    text = _strip_json_fence(resp.content[0].text.strip())
     try:
         data = json.loads(text)
         items = data.get("items", [])
         return items if isinstance(items, list) else []
     except json.JSONDecodeError:
         return []
+
+
+def _strip_json_fence(text: str) -> str:
+    """Remove optional ```json ... ``` wrapper from model output."""
+    t = text.strip()
+    if t.startswith("```"):
+        lines = t.splitlines()
+        if len(lines) >= 2 and lines[0].startswith("```"):
+            lines = lines[1:]
+            while lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            t = "\n".join(lines).strip()
+    return t
