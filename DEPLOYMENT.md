@@ -60,14 +60,25 @@ cat > .env << 'EOF'
 IMAP_HOST=imap.gmail.com
 IMAP_PORT=993
 IMAP_USER=you@gmail.com
-IMAP_PASSWORD=your-app-password
+# Leave blank if using AWS Secrets Manager
+IMAP_PASSWORD=
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=you@gmail.com
-SMTP_PASSWORD=your-app-password
+# Leave blank if using AWS Secrets Manager
+SMTP_PASSWORD=
 
-ANTHROPIC_API_KEY=your-anthropic-key
+# Leave blank if using AWS Secrets Manager
+ANTHROPIC_API_KEY=
+
+# AWS Secrets Manager (recommended for EC2)
+AWS_SECRETS_MANAGER_ENABLED=1
+AWS_SECRETS_MANAGER_REGION=us-east-2
+AWS_SECRET_IMAP_PASSWORD_ID=email-agent/imap-password
+AWS_SECRET_SMTP_PASSWORD_ID=email-agent/smtp-password
+AWS_SECRET_ANTHROPIC_API_KEY_ID=email-agent/anthropic-api-key
+
 ANTHROPIC_MODEL=claude-haiku-4-5
 EOF
 
@@ -212,17 +223,28 @@ cat > .env << 'EOF'
 IMAP_HOST=127.0.0.1
 IMAP_PORT=1143
 IMAP_USER=you@example.com
-IMAP_PASSWORD=your-bridge-password
+# Leave blank if using AWS Secrets Manager
+IMAP_PASSWORD=
 
 SMTP_HOST=127.0.0.1
 SMTP_PORT=1025
 SMTP_USER=you@example.com
-SMTP_PASSWORD=your-bridge-password
+# Leave blank if using AWS Secrets Manager
+SMTP_PASSWORD=
 
 IMAP_SSL_SKIP_VERIFY=1
 SMTP_SSL_SKIP_VERIFY=1
 
-ANTHROPIC_API_KEY=your-anthropic-key
+# Leave blank if using AWS Secrets Manager
+ANTHROPIC_API_KEY=
+
+# AWS Secrets Manager (recommended for EC2)
+AWS_SECRETS_MANAGER_ENABLED=1
+AWS_SECRETS_MANAGER_REGION=us-east-2
+AWS_SECRET_IMAP_PASSWORD_ID=email-agent/imap-password
+AWS_SECRET_SMTP_PASSWORD_ID=email-agent/smtp-password
+AWS_SECRET_ANTHROPIC_API_KEY_ID=email-agent/anthropic-api-key
+
 ANTHROPIC_MODEL=claude-haiku-4-5
 EOF
 ```

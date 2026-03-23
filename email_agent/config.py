@@ -6,6 +6,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from .secrets_manager import get_secret_string
+
 # Load .env from project root (parent of this package)
 _root = Path(__file__).resolve().parent.parent
 project_root = _root  # Public alias for CLI and other callers
@@ -92,6 +94,29 @@ def get_feedback_path() -> Path:
     if path_str:
         return Path(path_str).expanduser().resolve()
     return _root / "feedback.json"
+
+
+def _env_flag(key: str, default: bool = False) -> bool:
+    v = get_env(key, "1" if default else "0").lower()
+    return v in ("1", "true", "yes", "y", "on")
+
+
+def load_secret_if_enabled(*, env_value: str, secret_id: str, enabled: bool, region: str) -> str:
+    """
+    Prefer the direct env_value if present; otherwise fetch from AWS Secrets Manager if enabled.
+    """
+    if env_value:
+        return env_value
+    if not enabled:
+        return ""
+    try:
+        return get_secret_string(secret_id=secret_id, region=region)
+    except ModuleNotFoundError:
+        # Fail fast: without boto3 we can't reach AWS Secrets Manager.
+        raise
+    except Exception:
+        # Validation will provide the actionable error message.
+        return ""
 
 
 def load_calendar_allowlist() -> set[str]:
@@ -185,20 +210,44 @@ def get_calendar_state_path() -> Path:
 class Config:
     """Application configuration."""
 
+    # AWS Secrets Manager (for secrets at runtime, e.g. on EC2 w/ IAM role)
+    aws_secrets_manager_enabled: bool = _env_flag("AWS_SECRETS_MANAGER_ENABLED", default=False)
+    aws_secrets_manager_region: str = get_env("AWS_SECRETS_MANAGER_REGION", "us-east-2")
+    aws_secret_imap_password_id: str = get_env("AWS_SECRET_IMAP_PASSWORD_ID", "email-agent/imap-password")
+    aws_secret_smtp_password_id: str = get_env("AWS_SECRET_SMTP_PASSWORD_ID", "email-agent/smtp-password")
+    aws_secret_anthropic_api_key_id: str = get_env(
+        "AWS_SECRET_ANTHROPIC_API_KEY_ID", "email-agent/anthropic-api-key"
+    )
+
     # IMAP (receiving)
     imap_host: str = get_env("IMAP_HOST", "127.0.0.1")
     imap_port: int = int(get_env("IMAP_PORT", "1143"))
     imap_user: str = get_env("IMAP_USER", "")
-    imap_password: str = get_env("IMAP_PASSWORD", "")
+    imap_password: str = load_secret_if_enabled(
+        env_value=get_env("IMAP_PASSWORD", ""),
+        secret_id=aws_secret_imap_password_id,
+        enabled=aws_secrets_manager_enabled,
+        region=aws_secrets_manager_region,
+    )
 
     # SMTP (sending)
     smtp_host: str = get_env("SMTP_HOST", "127.0.0.1")
     smtp_port: int = int(get_env("SMTP_PORT", "1025"))
     smtp_user: str = get_env("SMTP_USER", "")
-    smtp_password: str = get_env("SMTP_PASSWORD", "")
+    smtp_password: str = load_secret_if_enabled(
+        env_value=get_env("SMTP_PASSWORD", ""),
+        secret_id=aws_secret_smtp_password_id,
+        enabled=aws_secrets_manager_enabled,
+        region=aws_secrets_manager_region,
+    )
 
     # LLM (Claude / Anthropic)
-    anthropic_api_key: str = get_env("ANTHROPIC_API_KEY", "")
+    anthropic_api_key: str = load_secret_if_enabled(
+        env_value=get_env("ANTHROPIC_API_KEY", ""),
+        secret_id=aws_secret_anthropic_api_key_id,
+        enabled=aws_secrets_manager_enabled,
+        region=aws_secrets_manager_region,
+    )
     anthropic_model: str = get_env("ANTHROPIC_MODEL", "claude-haiku-4-5")
 
     # Allowlist: email -> optional tone instruction (e.g. "be witty")
@@ -223,11 +272,34 @@ class Config:
         """Validate config and return list of error messages."""
         errors = []
         if not cls.imap_user or not cls.imap_password:
-            errors.append("IMAP_USER and IMAP_PASSWORD must be set")
+            if not cls.imap_user:
+                errors.append("IMAP_USER must be set")
+            else:
+                if cls.aws_secrets_manager_enabled:
+                    errors.append(
+                        f"IMAP password missing. Ensure Secrets Manager access to `{cls.aws_secret_imap_password_id}` "
+                        f"(and that the secret contains a string value)."
+                    )
+                else:
+                    errors.append("IMAP_PASSWORD must be set (or enable AWS Secrets Manager).")
         if not cls.smtp_user or not cls.smtp_password:
-            errors.append("SMTP_USER and SMTP_PASSWORD must be set")
+            if not cls.smtp_user:
+                errors.append("SMTP_USER must be set")
+            else:
+                if cls.aws_secrets_manager_enabled:
+                    errors.append(
+                        f"SMTP password missing. Ensure Secrets Manager access to `{cls.aws_secret_smtp_password_id}` "
+                        f"(and that the secret contains a string value)."
+                    )
+                else:
+                    errors.append("SMTP_PASSWORD must be set (or enable AWS Secrets Manager).")
         if not cls.anthropic_api_key:
-            errors.append("ANTHROPIC_API_KEY must be set")
+            if cls.aws_secrets_manager_enabled:
+                errors.append(
+                    f"Anthropic API key missing. Ensure Secrets Manager access to `{cls.aws_secret_anthropic_api_key_id}`."
+                )
+            else:
+                errors.append("ANTHROPIC_API_KEY must be set (or enable AWS Secrets Manager).")
         if not cls.allowlist:
             errors.append(
                 "Allowlist is empty. Create allowlist.txt (copy from allowlist.example.txt) "

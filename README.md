@@ -197,6 +197,11 @@ Feedback is saved in `feedback.json` (or the path in `FEEDBACK_FILE`) and includ
 | `KNOWLEDGE` | (none) | Alternative to knowledge.txt: newline-separated facts as env var |
 | `EMAIL_SIGNOFF` | (none) | Signoff appended to every email; `\n` for newline. Overrides signoff.txt if set. |
 | `FEEDBACK_FILE` | `feedback.json` | Path to the JSON file where feedback is stored |
+| `AWS_SECRETS_MANAGER_ENABLED` | (none) | If `1`, fetch `IMAP_PASSWORD`, `SMTP_PASSWORD`, and `ANTHROPIC_API_KEY` from AWS Secrets Manager (env vars override if set) |
+| `AWS_SECRETS_MANAGER_REGION` | `us-east-2` | AWS region for Secrets Manager |
+| `AWS_SECRET_IMAP_PASSWORD_ID` | `email-agent/imap-password` | Secrets Manager `SecretId` for the IMAP password |
+| `AWS_SECRET_SMTP_PASSWORD_ID` | `email-agent/smtp-password` | Secrets Manager `SecretId` for the SMTP password |
+| `AWS_SECRET_ANTHROPIC_API_KEY_ID` | `email-agent/anthropic-api-key` | Secrets Manager `SecretId` for the Anthropic API key |
 
 ## License
 
